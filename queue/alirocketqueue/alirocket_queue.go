@@ -110,7 +110,11 @@ func (m *AliyunMq) Dequeue(ctx context.Context, key string, args ...interface{})
 		{
 			// 处理业务逻辑
 			for _, v := range resp.Messages {
-				logger.Info(ctx, "Dequeue", fmt.Sprintf("%+v", v))
+				logger.Info(ctx, "Dequeue",
+					logger.NewWithField("message", v.MessageBody),
+					logger.NewWithField("tag", v.MessageTag),
+					logger.NewWithField("messageId", v.MessageId),
+					logger.NewWithField("requestId", v.RequestId))
 				if len(tags) > 0 && !inStringSlice(tags, v.MessageTag) { // 不在业务关注的tag中
 					return
 				}
