@@ -79,9 +79,7 @@ type AliyunMqConfig struct {
 }
 
 type RocketMqConfig struct {
-	EndPoint        string
-	AccessKey       string
-	SecretKey       string
+	AliyunMqConfig
 	GroupId         string
 	InstanceId      string
 	ConsumerOptions []consumer.Option
