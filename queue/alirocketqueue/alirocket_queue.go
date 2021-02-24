@@ -3,6 +3,7 @@ package alirocketqueue
 import (
 	"context"
 	"fmt"
+	"github.com/qit-team/snow-core/log/logger"
 	"strings"
 	"sync"
 	"time"
@@ -57,7 +58,7 @@ func GetAliyunRocketQueue(diName string) queue.Queue {
  * args[0] instanceId
  */
 func (m *AliyunMq) Enqueue(ctx context.Context, key string, message string, args ...interface{}) (bool, error) {
-	instanceId, _, _ := getOption(args...)
+	instanceId, _, messageTag := getOption(args...)
 
 	// 获取rocketmq的producer，这个和mns不同，区分了producer和consumer，alimns统一为client
 	mqProducer := m.client.GetProducer(instanceId, key)
@@ -65,6 +66,7 @@ func (m *AliyunMq) Enqueue(ctx context.Context, key string, message string, args
 	// aliyunmq消息格式 可以设置MessageTag和Properties等信息，先只提供最基本的MessageBody
 	mqMsg := mq_http_sdk.PublishMessageRequest{
 		MessageBody: message,
+		MessageTag:  messageTag,
 	}
 
 	_, err := mqProducer.PublishMessage(mqMsg)
@@ -82,9 +84,13 @@ func (m *AliyunMq) Enqueue(ctx context.Context, key string, message string, args
  */
 func (m *AliyunMq) Dequeue(ctx context.Context, key string, args ...interface{}) (message string, tag string, token string, dequeueCount int64, err error) {
 	instanceId, groupId, messageTag := getOption(args...)
+	tags := strings.Split(messageTag, "||")
+	for i := 0; i < len(tags); i++ {
+		tags[i] = strings.Trim(tags[i], " ")
+	}
 
 	// 获取rocketmq的consumer
-	mqConsumer := m.client.GetConsumer(instanceId, key, groupId, messageTag)
+	mqConsumer := m.client.GetConsumer(instanceId, key, groupId, "")
 
 	//endChan := make(chan int)
 	respChan := make(chan mq_http_sdk.ConsumeMessageResponse)
@@ -103,21 +109,11 @@ func (m *AliyunMq) Dequeue(ctx context.Context, key string, args ...interface{})
 	case resp := <-respChan:
 		{
 			// 处理业务逻辑
-			var handles []string
-			respLen := len(resp.Messages)
-			fmt.Printf("AliRocketMq Consume %d messages---->\n", respLen)
-			if respLen != 1 {
-				// 如果消息内容多于一条 可以给出提示or返回err
-			}
-
 			for _, v := range resp.Messages {
-				handles = append(handles, v.ReceiptHandle)
-				//fmt.Printf("\tMessageID: %s, PublishTime: %d, MessageTag: %s\n"+
-				//	"\tConsumedTimes: %d, FirstConsumeTime: %d, NextConsumeTime: %d\n"+
-				//	"\tBody: %s\n"+
-				//	"\tProps: %s\n",
-				//	v.MessageId, v.PublishTime, v.MessageTag, v.ConsumedTimes,
-				//	v.FirstConsumeTime, v.NextConsumeTime, v.MessageBody, v.Properties)
+				logger.Info(ctx, "Dequeue", fmt.Sprintf("%+v", v))
+				if len(tags) > 0 && !inStringSlice(tags, v.MessageTag) { // 不在业务关注的tag中
+					return
+				}
 				return v.MessageBody, v.MessageTag, v.ReceiptHandle, v.ConsumedTimes, nil
 			}
 
@@ -128,7 +124,6 @@ func (m *AliyunMq) Dequeue(ctx context.Context, key string, args ...interface{})
 			err = errMsg
 			if strings.Contains(errMsg.(errors.ErrCode).Error(), "MessageNotExist") {
 				err = nil
-				// fmt.Println("\nNo new message, continue!")
 			} else {
 				fmt.Println("aliyunmq get msg error:", errMsg)
 				time.Sleep(time.Duration(3) * time.Second)
@@ -227,6 +222,15 @@ func getOption(args ...interface{}) (instanceId, groupId, messageTag string) {
 		}
 	}
 	return
+}
+
+func inStringSlice(slice []string, element string) bool {
+	for _, v := range slice {
+		if v == element {
+			return true
+		}
+	}
+	return false
 }
 
 func init() {

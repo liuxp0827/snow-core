@@ -1,10 +1,10 @@
 module github.com/qit-team/snow-core
 
-go 1.12
+go 1.15
 
 require (
 	github.com/aliyun/aliyun-mns-go-sdk v0.0.0-20191205082232-b251b9d95415
-	github.com/aliyunmq/mq-http-go-sdk v0.0.0-20190610035126-ef50af8ccc77
+	github.com/aliyunmq/mq-http-go-sdk v0.0.0-20210105060048-14c71bbb1a3a
 	github.com/apache/rocketmq-client-go/v2 v2.0.0
 	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
@@ -30,5 +30,5 @@ require (
 	github.com/valyala/fasthttp v1.13.1 // indirect
 	golang.org/x/sys v0.0.0-20200523222454-059865788121 // indirect
 	xorm.io/core v0.7.3
-	xorm.io/xorm v1.0.2
+	xorm.io/xorm v1.0.7
 )
